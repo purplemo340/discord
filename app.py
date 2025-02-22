@@ -32,7 +32,7 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('Flask_Key')
-Bootstrap5(app)
+#Bootstrap5(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -63,6 +63,7 @@ data = os.getenv('Database_URL')
 app.config["SQLALCHEMY_DATABASE_URI"] = data
 
 db.init_app(app)
+
 
 
 class LoginForm(FlaskForm):
@@ -209,12 +210,15 @@ async def on_message(message):
         response = 'How many pages have you read today?'
         await message.channel.send(response)
         def check(m):
-            if message.content.isnumeric():
-                print('hi')
+            if m.content.isnumeric():
                 with app.app_context():
                     day=int(datetime.now().strftime('%d'))
+                    month_num=(datetime.now().strftime('%m'))
                     value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
-                    value_update.Feb=int(message.content)
+                    update =[value_update.Jan, value_update.Feb, value_update.Mar, value_update.Apr, value_update.May,
+                    value_update.Jun, value_update.Jul, value_update.Aug, value_update.Sep, value_update.Oct,
+                    value_update.Nov, value_update.Dec]
+                    update[month_num-1]=int(m.content)
                     db.session.commit()
             return m.channel==message.channel
         msg=await client.wait_for('message', check=check)
