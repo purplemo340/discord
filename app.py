@@ -26,6 +26,7 @@ import os
 
 import discord
 from dotenv import load_dotenv
+from discord.ext import commands
 
 load_dotenv()
 
@@ -186,9 +187,11 @@ GUILD = os.getenv('DISCORD_GUILD')
 intents=discord.Intents.default()
 
 intents.message_content = True
-client = discord.Client(intents=intents)
+#client = discord.Client(intents=intents)
 
-@client.event
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+""" @client.event
 async def on_ready():
     for guild in client.guilds:
         if guild.name == GUILD:
@@ -241,9 +244,6 @@ async def on_message(message):
             response=hi
             await message.channel.send(response)
         
-    elif message.content=="log!":
-        response="What book would you like to log. Use book index and Start message with \'log:\'"
-        await message.channel.send(response)
     elif message.content.startswith('log:'):
             book=message.content[4:]
             if book.isnumeric():
@@ -251,17 +251,81 @@ async def on_message(message):
                     result = db.session.execute(db.select(Books.title).order_by(Books.title).where(Books.user_id==2, Books.id==book))
                     response="Do you want to create a log for this book?: "+result.scalar()
                     await message.channel.send(response)
-                    
+                   
                     def check(m):
+                        
+                        new_log = Logs(log=m[4:],
+                        book=book,
+                        date_created=datetime.now().strftime('%b. %d, %Y  %I:%M:%S%p'),
+                        id=db.session.query(Logs.id).count() + 1,
+                        user_id=2)
+                        db.session.add(new_log)
+                        db.session.commit()
                         return m.channel==message.channel
                     msg=await client.wait_for('message', check=check)
-                    await message.channel.send(msg.author)
+                    await message.channel.send(msg[4:]) #Send log
     elif message.content=="log: yes":
         response="Start log with log message:"
         await message.channel.send(response)
-   
+#event to show the codes to use for information:
+@client.event
+async def on_ready():
+    mes="System Reboot(aka Power Outage)"
+    "Moshimoshi, What do you want to do? \n"
+    "show_books!: see the books that were read.\n"
+    "make_log!: Log for a specific book\n"
+    "show_pages!: show the pages read for the month\n"
+    "show_log!: Show the logs for a specified book\n"
+    "add_book!: Add book to database\n"
+    "add_pages!: Add what was read today\n"
+     """
+@bot.event
+async def on_ready():
+    mes="System Reboot(aka Power Outage)\
+    \n Moshimoshi, What do you want to do? \n \
+    show_books!: see the books that were read.\n\
+    make_log!: Log for a specific book\n\
+    show_pages!: show the pages read for the month\n\
+    show_log!: Show the logs for a specified book\n\
+    add_book!: Add book to database\n\
+    add_pages!: Add what was read today\n"
+    await bot.get_channel(1333564862835589205).send(mes)
+    print(f'{bot.user.name} has connected to Discord!')
+@bot.command(name='add_pages')
+async def show_pages(ctx):
+    response = 'How many pages have you read today?'
+    await ctx.send(response)
+    def check(m):
+        if m.content.isnumeric():
+            with app.app_context():
+                day=int(datetime.now().strftime('%d'))
+                month_num=int(datetime.now().strftime('%m'))
+                value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
+                update =[value_update.Jan, value_update.Feb, value_update.Mar, value_update.Apr, value_update.May,
+                value_update.Jun, value_update.Jul, value_update.Aug, value_update.Sep, value_update.Oct,
+                value_update.Nov, value_update.Dec]
+                value_update.Feb =int(m.content)
+                print(update[month_num-1])
+                print(day)
+                db.session.commit()
+            response = 'Good job! Keep it up!'
+            return m.channel==ctx.channel
+    
+    msg=await bot.wait_for('message', check=check)
+    
+    await ctx.send(response)
+    
+@bot.command(name='show_books')
+async def show_books(ctx):
+    with app.app_context():
+        result = db.session.execute(db.select(Pages.Feb).order_by(Pages.id))
+        all_books = result.scalars()
+        hi=""
+        for book in all_books:
+            hi=hi +": "+str(book)+ '\n'
+        response=hi
+        await ctx.channel.send(response)
 
-            
-client.run(TOKEN)
-
+#client.run(TOKEN)
+bot.run(TOKEN)
 ###############################################
