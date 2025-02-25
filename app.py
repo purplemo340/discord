@@ -279,6 +279,70 @@ async def on_ready():
     "add_book!: Add book to database\n"
     "add_pages!: Add what was read today\n"
      """
+def switch_add(value_update, value):
+    month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
+    if month==1:
+        value_update.Jan=value
+        return value_update
+    elif month==2:
+        value_update.Feb=value
+        return value_update
+    elif month==3:
+        value_update.Mar=value
+        return value_update
+    elif month==4:
+        value_update.Apr=value
+        return value_update
+    elif month==5:
+        value_update.May=value
+        return value_update
+    elif month==6:
+        value_update.Jun=value
+        return value_update
+    elif month==7:
+        value_update.Jul=value
+        return value_update
+    elif month==8:
+        value_update.Aug=value
+        return value_update    
+    elif month==9:
+        value_update.Sep=value
+        return value_update
+    elif month==10:
+        value_update.Oct=value
+        return value_update
+    elif month==11:
+        value_update.Nov=value
+        return value_update
+    elif month==12:
+        value_update.Dec=value 
+        return value_update   
+def switch(value):
+    month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
+    if month==1:
+        return value.Jan
+    elif month==2:
+        return value.Feb
+    elif month==3:
+        return value.Mar
+    elif month==4:
+        return value.Apr
+    elif month==5:
+        return value.May
+    elif month==6:
+        return value.Jun
+    elif month==7:
+        return value.Jul
+    elif month==8:
+        return value.Aug  
+    elif month==9:
+        return value.Sep
+    elif month==10:
+        return value.Oct
+    elif month==11:
+        return value.Nov
+    elif month==12:
+        return value.Dec  
 @bot.event
 async def on_ready():
     mes="System Reboot(aka Power Outage)\
@@ -292,7 +356,7 @@ async def on_ready():
     await bot.get_channel(1333564862835589205).send(mes)
     print(f'{bot.user.name} has connected to Discord!')
 @bot.command(name='add_pages')
-async def show_pages(ctx):
+async def add_pages(ctx):
     response = 'How many pages have you read today?'
     await ctx.send(response)
     def check(m):
@@ -301,12 +365,13 @@ async def show_pages(ctx):
                 day=int(datetime.now().strftime('%d'))
                 month_num=int(datetime.now().strftime('%m'))
                 value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
-                update =[value_update.Jan, value_update.Feb, value_update.Mar, value_update.Apr, value_update.May,
+                """ update =[value_update.Jan, value_update.Feb, value_update.Mar, value_update.Apr, value_update.May,
                 value_update.Jun, value_update.Jul, value_update.Aug, value_update.Sep, value_update.Oct,
                 value_update.Nov, value_update.Dec]
                 value_update.Feb =int(m.content)
                 print(update[month_num-1])
-                print(day)
+                print(day) """
+                update=switch_add(value_update, int(m.content))
                 db.session.commit()
             response = 'Good job! Keep it up!'
             return m.channel==ctx.channel
@@ -318,13 +383,38 @@ async def show_pages(ctx):
 @bot.command(name='show_books')
 async def show_books(ctx):
     with app.app_context():
-        result = db.session.execute(db.select(Pages.Feb).order_by(Pages.id))
+        result = db.session.execute(db.select(Books.title).order_by(Books.id))
         all_books = result.scalars()
-        hi=""
+        books=""
         for book in all_books:
-            hi=hi +": "+str(book)+ '\n'
-        response=hi
+            book_id = db.session.execute(db.select(Books.id).where(Books.title==book))
+            books=books +str(book_id.scalar())+ ": "+str(book)+ '\n'
+            
+        response=books
         await ctx.channel.send(response)
+        
+@bot.command(name='show_logs')
+async def show_logs(ctx):
+    response="What book do you want to see logs for. Use the book id"
+    await show_books(ctx) #not sure if I can do this but it would be nice to see the books with the ids
+    await ctx.send(response)
+    logs=[]
+    def check(m):
+        if m.content.isnumeric():
+            id_book=m.content
+            
+            with app.app_context():
+                result=db.session.execute(db.select(Logs.log).where(Logs.book_id==id_book).order_by(Logs.date_created))
+                for log in result.scalars():
+                    logs.append(log)
+            return m.channel==ctx.channel
+    msg=await bot.wait_for('message', check=check)
+    for log in logs:
+        await ctx.send(log)
+@bot.command(name='make_log')
+async def make_log(ctx):
+    await show_books(ctx)
+    await ctx.send("Using the book id, which book will you make a log for?")
 
 #client.run(TOKEN)
 bot.run(TOKEN)
