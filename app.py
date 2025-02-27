@@ -418,11 +418,12 @@ async def make_log(ctx):
     await ctx.send("Using the book id, which book will you make a log for?")
     def check(m):
         return m.channel==ctx.channel and m.content.isnumeric()
-    msg=bot.wait_for('message', check=check)
+    msg=await bot.wait_for('message', check=check)
+    print(msg.content)
     with app.app_context():
                 result=db.session.execute(db.select(Books.title).where(Books.id==msg.content))
                 book=result.scalar()
-    ctx.send("This book, "+result+" will be logged. ")
+    await ctx.send("This book, "+book+" will be logged. ")
     def check1(m):
         with app.app_context():
                 new_log = Logs(
@@ -434,7 +435,7 @@ async def make_log(ctx):
         )
         db.session.add(new_log)
         db.session.commit()
-    msg1=bot.wait_for('message', check=check1)
+    msg1=await bot.wait_for('message', check=check1)
     
 
 #client.run(TOKEN)
