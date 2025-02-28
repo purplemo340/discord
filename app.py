@@ -191,94 +191,6 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-""" @client.event
-async def on_ready():
-    for guild in client.guilds:
-        if guild.name == GUILD:
-            break
-
-    print(
-        f'{client.user} is connected to the following guild:\n'
-        f'{guild.name}(id: {guild.id})'
-    )
-###########################################
-
-@client.event
-async def on_message(message):
-    
-    print(message.content)
-    if message.author == client.user:
-        return
-    if message.content=='pages!':
-        response = 'How many pages have you read today?'
-        await message.channel.send(response)
-        def check(m):
-            if m.content.isnumeric():
-                with app.app_context():
-                    day=int(datetime.now().strftime('%d'))
-                    month_num=(datetime.now().strftime('%m'))
-                    value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
-                    update =[value_update.Jan, value_update.Feb, value_update.Mar, value_update.Apr, value_update.May,
-                    value_update.Jun, value_update.Jul, value_update.Aug, value_update.Sep, value_update.Oct,
-                    value_update.Nov, value_update.Dec]
-                    update[month_num-1]=int(m.content)
-                    db.session.commit()
-            return m.channel==message.channel
-        msg=await client.wait_for('message', check=check)
-        response = 'Good job! Keep it up!'
-        await message.channel.send(response)
-        
-    
-        
-            
-    elif message.content=='show!':
-        with app.app_context():
-            result = db.session.execute(db.select(Books.title).order_by(Books.title).where(Books.user_id==2))
-            all_books = result.scalars()
-            hi=""
-            for book in all_books:
-                id = db.session.execute(db.select(Books.id).where(Books.user_id==2, Books.title==book))
-                id=id.scalar()
-                hi=hi + str(id) + ": "+book+ '\n'
-                
-            response=hi
-            await message.channel.send(response)
-        
-    elif message.content.startswith('log:'):
-            book=message.content[4:]
-            if book.isnumeric():
-                with app.app_context():
-                    result = db.session.execute(db.select(Books.title).order_by(Books.title).where(Books.user_id==2, Books.id==book))
-                    response="Do you want to create a log for this book?: "+result.scalar()
-                    await message.channel.send(response)
-                   
-                    def check(m):
-                        
-                        new_log = Logs(log=m[4:],
-                        book=book,
-                        date_created=datetime.now().strftime('%b. %d, %Y  %I:%M:%S%p'),
-                        id=db.session.query(Logs.id).count() + 1,
-                        user_id=2)
-                        db.session.add(new_log)
-                        db.session.commit()
-                        return m.channel==message.channel
-                    msg=await client.wait_for('message', check=check)
-                    await message.channel.send(msg[4:]) #Send log
-    elif message.content=="log: yes":
-        response="Start log with log message:"
-        await message.channel.send(response)
-#event to show the codes to use for information:
-@client.event
-async def on_ready():
-    mes="System Reboot(aka Power Outage)"
-    "Moshimoshi, What do you want to do? \n"
-    "show_books!: see the books that were read.\n"
-    "make_log!: Log for a specific book\n"
-    "show_pages!: show the pages read for the month\n"
-    "show_log!: Show the logs for a specified book\n"
-    "add_book!: Add book to database\n"
-    "add_pages!: Add what was read today\n"
-     """
 def switch_add(value_update, value):
     month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
     if month==1:
@@ -353,7 +265,8 @@ async def on_ready():
     show_log!: Show the logs for a specified book\n\
     add_book!: Add book to database\n\
     add_pages!: Add what was read today\n"
-    await bot.get_channel(1333564862835589205).send(mes)
+    chan=os.getenv('discord_channel')
+    await bot.get_channel(chan).send(mes)
     print(f'{bot.user.name} has connected to Discord!')
 @bot.command(name='add_pages')
 async def add_pages(ctx):
@@ -365,12 +278,6 @@ async def add_pages(ctx):
                 day=int(datetime.now().strftime('%d'))
                 month_num=int(datetime.now().strftime('%m'))
                 value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
-                """ update =[value_update.Jan, value_update.Feb, value_update.Mar, value_update.Apr, value_update.May,
-                value_update.Jun, value_update.Jul, value_update.Aug, value_update.Sep, value_update.Oct,
-                value_update.Nov, value_update.Dec]
-                value_update.Feb =int(m.content)
-                print(update[month_num-1])
-                print(day) """
                 update=switch_add(value_update, int(m.content))
                 db.session.commit()
             response = 'Good job! Keep it up!'
@@ -421,23 +328,26 @@ async def make_log(ctx):
     msg=await bot.wait_for('message', check=check)
     print(msg.content)
     with app.app_context():
-                result=db.session.execute(db.select(Books.title).where(Books.id==msg.content))
+                result=db.session.execute(db.select(Books.title).where(Books.id==int(msg.content)))
                 book=result.scalar()
+                result1=db.session.execute(db.select(Books).where(Books.title==book))
+                result1=result1.scalar()
     await ctx.send("This book, "+book+" will be logged. ")
     def check1(m):
         with app.app_context():
-                new_log = Logs(
+            new_log = Logs(
                 log=m.content,
-                book=book,
+                book=result1,
                 date_created=datetime.now().strftime('%b. %d, %Y  %I:%M:%S%p'),
                 id=db.session.query(Logs.id).count() + 1,
                 user_id=2 #username
         )
-        db.session.add(new_log)
-        db.session.commit()
+            db.session.add(new_log)
+            db.session.commit()
+        return m.channel==ctx.channel
     msg1=await bot.wait_for('message', check=check1)
+    await ctx.send("Log completed!")
     
 
-#client.run(TOKEN)
 bot.run(TOKEN)
 ###############################################
