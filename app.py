@@ -67,18 +67,6 @@ db.init_app(app)
 
 
 
-class LoginForm(FlaskForm):
-    name = StringField("Username", validators=[DataRequired()])
-    password=PasswordField("Password", validators=[DataRequired()])
-    submit = SubmitField("Log In")
-
-
-class RegisterForm(FlaskForm):
-    name = StringField("Username", validators=[DataRequired()])
-    password = PasswordField("Password", validators=[DataRequired()])
-    submit = SubmitField("Register")
-
-
 class LogForm(FlaskForm):
     log = CKEditorField("Book Log", validators=[DataRequired()])
     submit = SubmitField("Log")
@@ -180,18 +168,18 @@ with app.app_context():
     db.create_all()
 import discord
 from dotenv import load_dotenv
-
+#load variables from .env
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+#What are intents?
 intents=discord.Intents.default()
-
 intents.message_content = True
-#client = discord.Client(intents=intents)
+
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-def switch_add(value_update, value):
+def switch_add(value_update, value, month):
     month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
     if month==1:
         value_update.Jan=value
@@ -229,8 +217,8 @@ def switch_add(value_update, value):
     elif month==12:
         value_update.Dec=value 
         return value_update   
-def switch(value):
-    month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
+def switch(value, month):
+    #month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
     if month==1:
         return value.Jan
     elif month==2:
@@ -254,19 +242,47 @@ def switch(value):
     elif month==11:
         return value.Nov
     elif month==12:
-        return value.Dec  
+        return value.Dec
+def switch_pages(month):
+    #month=int(datetime.now().strftime('%m')) #today's day for comparison to row in table
+    if month==1:
+        return db.session.execute(db.select(Pages.Jan))
+    elif month==2:
+        return db.session.execute(db.select(Pages.Feb))
+    elif month==3:
+        return db.session.execute(db.select(Pages.Mar))
+    elif month==4:
+        return db.session.execute(db.select(Pages.Apr))
+    elif month==5:
+        return db.session.execute(db.select(Pages.May))
+    elif month==6:
+        return db.session.execute(db.select(Pages.Jun))
+    elif month==7:
+        return db.session.execute(db.select(Pages.Jul))
+    elif month==8:
+        return db.session.execute(db.select(Pages.Aug))  
+    elif month==9:
+        return db.session.execute(db.select(Pages.Sep))
+    elif month==10:
+        return db.session.execute(db.select(Pages.Oct))
+    elif month==11:
+        return db.session.execute(db.select(Pages.Nov))
+    elif month==12:
+        return db.session.execute(db.select(Pages.Dec))   
 @bot.event
 async def on_ready():
     mes="System Reboot(aka Power Outage)\
     \n Moshimoshi, What do you want to do? \n \
     show_books!: see the books that were read.\n\
-    make_log!: Log for a specific book\n\
-    show_pages!: show the pages read for the month\n\
-    show_log!: Show the logs for a specified book\n\
-    add_book!: Add book to database\n\
-    add_pages!: Add what was read today\n"
+    !make_log: Log for a specific book\n\
+    !show_pages: show the pages read for the month\n\
+    !show_log: Show the logs for a specified book\n\
+    !add_book: Add book to database\n\
+    !add_pages: Add what was read today\n\
+    !add_prev_pages: Add what was read on a certain day\n\
+    !stat_pages: Stats for the pages read for that month\n"
     chan=os.getenv('discord_channel')
-    await bot.get_channel(chan).send(mes)
+    await bot.get_channel(int(chan)).send(mes)
     print(f'{bot.user.name} has connected to Discord!')
 @bot.command(name='add_pages')
 async def add_pages(ctx):
@@ -286,6 +302,47 @@ async def add_pages(ctx):
     msg=await bot.wait_for('message', check=check)
     print(msg.content)
     await ctx.send(response)
+@bot.command(name='add_prev_pages')
+async def add_prev_pages(ctx):
+    def check(m):
+        if m.content.isnumeric():
+            with app.app_context():
+                day=int(datetime.now().strftime('%d'))
+                month_num=int(datetime.now().strftime('%m'))
+                value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
+                update=switch_add(value_update, int(m.content), month_num)
+                db.session.commit()
+            response = 'Good job! Keep it up!'
+            return m.channel==ctx.channel
+    def past_day(m):
+        if m.content.isnumeric():
+            return m.channel==ctx.channel
+    
+    response ='What day do you want to add pages for?'
+    await ctx.send(response)
+    day=await bot.wait_for('message', check=past_day)
+    print(day.content)
+
+    response ='What month?'
+    await ctx.send(response)
+    month=await bot.wait_for('message', check=past_day)
+    print(month.content)
+
+    response = 'How many pages have you read today?'
+    await ctx.send(response)
+    msg=await bot.wait_for('message', check=past_day)
+    print(msg.content)
+
+    if msg.content.isnumeric():
+            with app.app_context():
+                day=int(day.content)
+                month_num=int(month.content)
+                value_update = db.session.execute(db.select(Pages).where(Pages.id == day)).scalar()
+                update=switch_add(value_update, int(msg.content), month_num)
+                db.session.commit()
+            response = 'Good job! Keep it up!'
+    await ctx.send(response)
+
     
 @bot.command(name='show_books')
 async def show_books(ctx):
@@ -303,7 +360,7 @@ async def show_books(ctx):
 @bot.command(name='show_logs')
 async def show_logs(ctx):
     response="What book do you want to see logs for. Use the book id"
-    await show_books(ctx) #not sure if I can do this but it would be nice to see the books with the ids
+    await show_books(ctx) #show books with the ids
     await ctx.send(response)
     logs=[]
     def check(m):
@@ -347,7 +404,19 @@ async def make_log(ctx):
         return m.channel==ctx.channel
     msg1=await bot.wait_for('message', check=check1)
     await ctx.send("Log completed!")
-    
+@bot.command(name='stat')
+async def stat(ctx):
+    #sum of month
+    with app.context():
+        month=int(datetime.now().strftime('%m'))
+        result=switch_pages(month)
+        sum=0
+        for r in result:
+            sum=sum+r
+        #sum of year
+        
+        
+        #average per month
 
 bot.run(TOKEN)
 ###############################################
